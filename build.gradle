@@ -61,9 +61,7 @@ repositories {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
-    // SLR1本体を「参照のみ(コンパイル時に見えるだけ、同梱はしない)」で依存させたい場合は
-    // 手元のjarをlibsフォルダに置いてこちらを使う
-    // compileOnly files('libs/SLR1_0_1.jar')
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
 jar {
