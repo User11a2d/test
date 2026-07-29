@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="Apache License version 2.0"
+issueTrackerURL="https://example.com"
+
+[[mods]]
+modId="slrjapatch"
+version="1.0.0"
+displayName="SLR1 Japanese Patch"
+authors="you"
+description='''
+Solo Craft: Reawakening のハードコードされた英語テキストを
+Component.literal のフックによって日本語に置換するパッチMOD。
+SLR1本体MODが必須です。
+'''
+
+[[dependencies.slrjapatch]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1]"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.slrjapatch]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.slrjapatch]]
+    modId="sololeveling"
+    mandatory=true
+    versionRange="[1.0.0,)"
+    ordering="AFTER"
+    side="BOTH"

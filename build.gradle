@@ -1,0 +1,81 @@
+// build.gradle
+// SLR1 日本語化パッチMOD (companion mod)
+// Minecraft 1.20.1 / Forge 47.x 用
+//
+// 使い方:
+// 1. Forge公式のMDKを取得: https://files.minecraftforge.net/net/minecraftforge/forge/
+//    (Minecraft 1.20.1 用の Forge を選択し、MDKをダウンロードして展開)
+// 2. MDKに含まれる build.gradle / gradle.properties / settings.gradle を、
+//    このファイル一式に置き換える(または本ファイルの中身をマージする)
+// 3. src/main/java, src/main/resources をこのプロジェクトのもので上書き
+// 4. `./gradlew build` を実行 (JDK17が必要)
+// 5. build/libs/ に生成された jar を、SLR1本体MODと同じ mods フォルダに入れる
+
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'org.spongepowered.mixin' version '0.7-SNAPSHOT'
+}
+
+version = '1.0.0'
+group = 'net.example.slrja'
+
+base {
+    archivesName = 'slr1-ja-patch'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            mods {
+                slrjapatch {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+mixin {
+    add sourceSets.main, 'slrjapatch.refmap.json'
+    config 'mixins.slrjapatch.json'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.minecraftforge.net/' }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
+    // SLR1本体を「参照のみ(コンパイル時に見えるだけ、同梱はしない)」で依存させたい場合は
+    // 手元のjarをlibsフォルダに置いてこちらを使う
+    // compileOnly files('libs/SLR1_0_1.jar')
+}
+
+jar {
+    manifest {
+        attributes([
+            "Specification-Title"     : "slrjapatch",
+            "Specification-Vendor"    : "you",
+            "Specification-Version"   : "1",
+            "Implementation-Title"    : project.name,
+            "Implementation-Version"  : project.version,
+            "Implementation-Vendor"   : "you",
+            "MixinConfigs"            : "mixins.slrjapatch.json"
+        ])
+    }
+}
