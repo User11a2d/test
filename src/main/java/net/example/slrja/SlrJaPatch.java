@@ -10,50 +10,48 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 
-/**
- * SLR1 日本語化パッチMOD 本体。
- * 起動時に translations_ja.json (英語→日本語 の辞書) を読み込み、
- * TranslationDictionary に保持する。
- * 実際の文字列置換は mixin.ComponentLiteralMixin が行う。
- */
 @Mod("slrjapatch")
 public class SlrJaPatch {
 
     public static final String MODID = "slrjapatch";
-    private static final Logger LOGGER = Logger.getLogger(MODID);
 
     public SlrJaPatch() {
         TranslationDictionary.load();
-        LOGGER.info("[slrjapatch] loaded " + TranslationDictionary.size() + " translation entries");
+        System.out.println("[slrjapatch] DICTIONARY LOADED: " + TranslationDictionary.size() + " entries");
     }
 
-    /**
-     * 英語原文 -> 日本語訳 の辞書を保持するクラス。
-     * src/main/resources/translations_ja.json から読み込む。
-     * JSON形式: { "英語の原文そのまま": "日本語訳", ... }
-     */
     public static class TranslationDictionary {
         private static final Map<String, String> MAP = new HashMap<>();
+        private static boolean loadAttempted = false;
 
         public static void load() {
+            loadAttempted = true;
             try (Reader reader = new InputStreamReader(
                     SlrJaPatch.class.getResourceAsStream("/translations_ja.json"),
                     StandardCharsets.UTF_8)) {
                 Type type = new TypeToken<Map<String, String>>() {}.getType();
                 Map<String, String> loaded = new Gson().fromJson(reader, type);
                 if (loaded != null) {
-                    MAP.putAll(loaded);
+                    // 空の訳(未翻訳)は除外して登録
+                    for (Map.Entry<String, String> e : loaded.entrySet()) {
+                        if (e.getValue() != null && !e.getValue().isEmpty()) {
+                            MAP.put(e.getKey(), e.getValue());
+                        }
+                    }
                 }
-            } catch (Exception e) {
-                LOGGER.severe("[slrjapatch] failed to load translations_ja.json: " + e);
+            } catch (Throwable t) {
+                System.out.println("[slrjapatch] FAILED TO LOAD DICTIONARY: " + t);
             }
         }
 
-        /** 完全一致する翻訳があれば返す。無ければ null。 */
         public static String get(String english) {
             if (english == null) return null;
+            // Mixinがmod初期化より先に動く場合に備え、未ロードならここでロード
+            if (!loadAttempted) {
+                load();
+                System.out.println("[slrjapatch] LAZY DICTIONARY LOAD: " + MAP.size() + " entries");
+            }
             return MAP.get(english);
         }
 
