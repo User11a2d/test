@@ -1,5 +1,17 @@
 name: Build SLR1 Japanese Patch
 
+# このファイルをGitHubにpushすると、GitHub側のサーバーが自動でビルドします。
+# ビルドが終わると、Actionsタブの実行結果ページから
+# 完成した .jar ファイルをダウンロードできます(Artifacts欄)。
+#
+# 使い方:
+# 1. GitHubで新しいリポジトリを作成する(Public/Privateどちらでも可)
+# 2. このプロジェクト一式(ja_patch_mod フォルダの中身)をアップロードする
+#    (GitHubのWebサイト上のドラッグ&ドロップでOK、コマンド操作不要)
+# 3. GitHubのリポジトリ画面上部の「Actions」タブを開く
+# 4. 自動でビルドが始まる(数分かかります)。終わったら
+#    実行結果をクリック → 下の方の「Artifacts」から jar をダウンロード
+
 on:
   push:
     branches: [ main, master ]
@@ -20,7 +32,10 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.8'
 
+      # 注: ForgeGradleはまだGradle 9系に対応していないため、8系を明示的に指定しています。
       - name: Build with Gradle
         run: gradle build --no-daemon
 
