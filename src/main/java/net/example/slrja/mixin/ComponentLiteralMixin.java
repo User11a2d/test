@@ -1,58 +1,51 @@
 package net.example.slrja.mixin;
 
 import net.example.slrja.SlrJaPatch;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.contents.LiteralContents;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.lang.reflect.Field;
+import java.util.Optional;
 
+/**
+ * LiteralContents は record クラスであり、フィールドの書き換えは
+ * リフレクションでも Unsafe でも拒否されるため不可能。
+ * 代わりに、テキストが読み出される visit メソッドをフックし、
+ * 辞書にヒットした場合は日本語訳を代わりに消費者へ渡す。
+ */
 @Mixin(LiteralContents.class)
 public abstract class ComponentLiteralMixin {
 
-    private static sun.misc.Unsafe slrjapatch$unsafe;
-    private static long slrjapatch$textOffset = -1L;
-    private static int slrjapatch$hitCount = 0;
     private static int slrjapatch$translateCount = 0;
-    private static boolean slrjapatch$announced = false;
 
-    @Inject(method = "<init>", at = @At("RETURN"))
-    private void slrjapatch$translate(String text, CallbackInfo ci) {
-        // フックが生きていることを最初の1回だけログに出す
-        if (!slrjapatch$announced) {
-            slrjapatch$announced = true;
-            System.out.println("[slrjapatch] MIXIN HOOK IS ALIVE (first LiteralContents created)");
-        }
-        slrjapatch$hitCount++;
-
-        if (text == null) return;
+    @Inject(method = "visit(Lnet/minecraft/network/chat/FormattedText$ContentConsumer;)Ljava/util/Optional;",
+            at = @At("HEAD"), cancellable = true)
+    private <T> void slrjapatch$visitPlain(FormattedText.ContentConsumer<T> consumer,
+                                           CallbackInfoReturnable<Optional<T>> cir) {
+        String text = ((LiteralContents) (Object) this).text();
         String ja = SlrJaPatch.TranslationDictionary.get(text);
-        if (ja == null) return;
-
-        try {
-            if (slrjapatch$unsafe == null) {
-                Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                slrjapatch$unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
-                for (Field f : LiteralContents.class.getDeclaredFields()) {
-                    if (f.getType() == String.class) {
-                        slrjapatch$textOffset = slrjapatch$unsafe.objectFieldOffset(f);
-                        break;
-                    }
-                }
-                System.out.println("[slrjapatch] UNSAFE READY, field offset=" + slrjapatch$textOffset);
-            }
-            if (slrjapatch$textOffset != -1L) {
-                slrjapatch$unsafe.putObject(this, slrjapatch$textOffset, ja);
+        if (ja != null) {
+            if (slrjapatch$translateCount < 5) {
                 slrjapatch$translateCount++;
-                if (slrjapatch$translateCount <= 5) {
-                    System.out.println("[slrjapatch] TRANSLATED: \"" + text + "\" -> \"" + ja + "\"");
-                }
+                System.out.println("[slrjapatch] TRANSLATED: \"" + text + "\" -> \"" + ja + "\"");
             }
-        } catch (Throwable t) {
-            System.out.println("[slrjapatch] WRITE FAILED: " + t);
+            cir.setReturnValue(consumer.accept(ja));
+        }
+    }
+
+    @Inject(method = "visit(Lnet/minecraft/network/chat/FormattedText$StyledContentConsumer;Lnet/minecraft/network/chat/Style;)Ljava/util/Optional;",
+            at = @At("HEAD"), cancellable = true)
+    private <T> void slrjapatch$visitStyled(FormattedText.StyledContentConsumer<T> consumer,
+                                            Style style,
+                                            CallbackInfoReturnable<Optional<T>> cir) {
+        String text = ((LiteralContents) (Object) this).text();
+        String ja = SlrJaPatch.TranslationDictionary.get(text);
+        if (ja != null) {
+            cir.setReturnValue(consumer.accept(style, ja));
         }
     }
 }
