@@ -18,7 +18,6 @@ public class SlrJaPatch {
 
     public SlrJaPatch() {
         TranslationDictionary.load();
-        System.out.println("[slrjapatch] DICTIONARY LOADED: " + TranslationDictionary.size() + " entries");
     }
 
     public static class TranslationDictionary {
@@ -33,26 +32,39 @@ public class SlrJaPatch {
                 Type type = new TypeToken<Map<String, String>>() {}.getType();
                 Map<String, String> loaded = new Gson().fromJson(reader, type);
                 if (loaded != null) {
-                    // 空の訳(未翻訳)は除外して登録
                     for (Map.Entry<String, String> e : loaded.entrySet()) {
                         if (e.getValue() != null && !e.getValue().isEmpty()) {
                             MAP.put(e.getKey(), e.getValue());
                         }
                     }
                 }
-            } catch (Throwable t) {
-                System.out.println("[slrjapatch] FAILED TO LOAD DICTIONARY: " + t);
+            } catch (Throwable ignored) {
             }
         }
 
+        /**
+         * 1) 完全一致で辞書を引く
+         * 2) 一致しなければ「ラベル: 値」形式とみなし、コロンまでのラベル部分のみ翻訳
+         *    (例: "LVL: 7" -> "レベル: 7")
+         * どちらも該当しなければ null(=翻訳しない)
+         */
         public static String get(String english) {
-            if (english == null) return null;
-            // Mixinがmod初期化より先に動く場合に備え、未ロードならここでロード
+            if (english == null || english.isEmpty()) return null;
             if (!loadAttempted) {
                 load();
-                System.out.println("[slrjapatch] LAZY DICTIONARY LOAD: " + MAP.size() + " entries");
             }
-            return MAP.get(english);
+            String full = MAP.get(english);
+            if (full != null) return full;
+
+            int idx = english.indexOf(':');
+            if (idx > 0 && idx < 24 && idx < english.length()) {
+                String label = english.substring(0, idx + 1);
+                String jaLabel = MAP.get(label);
+                if (jaLabel != null) {
+                    return jaLabel + english.substring(idx + 1);
+                }
+            }
+            return null;
         }
 
         public static int size() {
