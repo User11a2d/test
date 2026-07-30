@@ -7,9 +7,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
- * SLR1のデイリークエスト画面などは、Component(LiteralContents)を経由せず
- * GuiGraphics.drawString(Font, String, ...) で生の文字列を直接描画している。
- * この経路でも辞書を引けるよう、drawStringのString引数を差し替える。
+ * drawString(生文字列描画)経路の翻訳。
+ * 1) まず文字列全体で辞書を引く(完全一致)
+ * 2) 一致しなければ「ラベル: 値」形式とみなし、コロンまでのラベル部分だけ辞書を引いて
+ *    訳せたらラベルのみ差し替える(例: "LVL: 7" -> "レベル: 7")
  */
 @Mixin(GuiGraphics.class)
 public abstract class GuiStringMixin {
@@ -18,8 +19,21 @@ public abstract class GuiStringMixin {
             method = "drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I",
             at = @At("HEAD"), argsOnly = true)
     private String slrjapatch$translateDrawString(String text) {
-        if (text == null) return null;
+        if (text == null || text.isEmpty()) return text;
+
+        // 1) 完全一致
         String ja = SlrJaPatch.TranslationDictionary.get(text);
-        return ja != null ? ja : text;
+        if (ja != null) return ja;
+
+        // 2) ラベル部分一致 ("XXX:" までを辞書で引く)
+        int idx = text.indexOf(':');
+        if (idx > 0 && idx < 24) {
+            String label = text.substring(0, idx + 1); // 例 "LVL:"
+            String jaLabel = SlrJaPatch.TranslationDictionary.get(label);
+            if (jaLabel != null) {
+                return jaLabel + text.substring(idx + 1);
+            }
+        }
+        return text;
     }
 }
