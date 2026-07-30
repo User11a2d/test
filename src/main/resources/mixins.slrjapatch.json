@@ -7,7 +7,9 @@
   "mixins": [
     "ComponentLiteralMixin"
   ],
-  "client": [],
+  "client": [
+    "GuiStringMixin"
+  ],
   "server": [],
   "injectors": {
     "defaultRequire": 1
