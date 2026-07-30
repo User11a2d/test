@@ -24,7 +24,6 @@ public class SlrJaPatch {
 
     public static class TranslationDictionary {
         private static final Map<String, String> MAP = new HashMap<>();
-        // "LVL:" のような、末尾がコロンのラベルだけを集めた軽量リスト
         private static final List<Map.Entry<String, String>> LABELS = new ArrayList<>();
         private static boolean loadAttempted = false;
 
@@ -49,12 +48,6 @@ public class SlrJaPatch {
             }
         }
 
-        /**
-         * 1) 完全一致
-         * 2) 見えない制御文字などが先頭に紛れ込んでいる場合に備え、
-         *    文字列の先頭付近(0〜3文字目)に既知のラベル("LVL:"など)が
-         *    含まれていないか検索し、見つかればそのラベル部分だけ翻訳する。
-         */
         public static String get(String english) {
             if (english == null || english.isEmpty()) return null;
             if (!loadAttempted) {
@@ -62,6 +55,9 @@ public class SlrJaPatch {
             }
             String full = MAP.get(english);
             if (full != null) return full;
+
+            // コロンを含む文字列のときだけラベル照合を行う(通常の描画では即 return される)
+            if (english.indexOf(':') < 0) return null;
 
             for (Map.Entry<String, String> label : LABELS) {
                 String key = label.getKey();
