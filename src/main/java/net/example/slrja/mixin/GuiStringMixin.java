@@ -8,31 +8,35 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
  * drawString(生文字列描画)経路の翻訳。
- * 1) まず文字列全体で辞書を引く(完全一致)
- * 2) 一致しなければ「ラベル: 値」形式とみなし、コロンまでのラベル部分だけ辞書を引いて
- *    訳せたらラベルのみ差し替える(例: "LVL: 7" -> "レベル: 7")
  */
 @Mixin(GuiGraphics.class)
 public abstract class GuiStringMixin {
+
+    private static int slrjapatch$callCount = 0;
+    private static boolean slrjapatch$announced = false;
 
     @ModifyVariable(
             method = "drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I",
             at = @At("HEAD"), argsOnly = true)
     private String slrjapatch$translateDrawString(String text) {
+        if (!slrjapatch$announced) {
+            slrjapatch$announced = true;
+            System.out.println("[slrjapatch] GUISTRING MIXIN IS ALIVE");
+        }
+        slrjapatch$callCount++;
+
         if (text == null || text.isEmpty()) return text;
 
-        // 1) 完全一致
         String ja = SlrJaPatch.TranslationDictionary.get(text);
-        if (ja != null) return ja;
-
-        // 2) ラベル部分一致 ("XXX:" までを辞書で引く)
-        int idx = text.indexOf(':');
-        if (idx > 0 && idx < 24) {
-            String label = text.substring(0, idx + 1); // 例 "LVL:"
-            String jaLabel = SlrJaPatch.TranslationDictionary.get(label);
-            if (jaLabel != null) {
-                return jaLabel + text.substring(idx + 1);
+        if (ja != null) {
+            if (slrjapatch$callCount <= 10) {
+                System.out.println("[slrjapatch] drawString TRANSLATED: \"" + text + "\" -> \"" + ja + "\"");
             }
+            return ja;
+        }
+
+        if (slrjapatch$callCount <= 30) {
+            System.out.println("[slrjapatch] drawString RAW (no match): \"" + text + "\"");
         }
         return text;
     }
